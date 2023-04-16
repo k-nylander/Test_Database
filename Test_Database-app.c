@@ -33,6 +33,59 @@ typedef struct{
     char tag[32];
 }question;
 
+// Usefull functions
+void stdinClear(){
+    char c;
+    while ((c = getchar()) != '\n' && c != EOF);
+    return;
+    // Ps. Search why u need to press Space
+}
+
+void consoleClear(){
+    printf("\e[1;1H\e[2J");
+}
+
+//Project functions
+void default_alert(int alert_type, int alert_code){
+    if(alert_type == 0){
+        switch (alert_code){
+        case 0:
+            consoleClear();
+            printf("✔ Action concluded successfully\n");
+            break;
+        case 1:
+            printf("🧩 Tip: The file must be in the same folder as the program and the file type has to be '.tdb'.\nFile name: ");
+            break;        
+        case 2:
+            printf("1. Try again\n2. Create file\n9. Exit\n> ");
+            break;
+        }
+        return;
+    }
+    if(alert_type == 1){    
+        consoleClear();
+        switch (alert_code){
+        case 0:
+            printf("❌ Invalid answer\n");
+            stdinClear();
+            break;
+        case 1:
+            printf("❌ File is missing!\n\n");
+            break;
+        case 2:
+            printf("❌ Invalid file type! \n\nTry again...\n");
+            break;
+        case 3:
+            printf("❌ Unknown problem! \n❌ Exiting program...\n");
+            break;
+        case 4:
+            printf("❌ You need to chose one of the options\n\n");
+            break;
+        }
+        return;
+    }
+}
+
 int lnCount(){
     char c;
     int aux = 1;
@@ -45,51 +98,7 @@ int lnCount(){
     return aux;
 }
 
-void stdinClear(){
-    char c;
-    while ((c = getchar()) != '\n' && c != EOF);
-    return;
-    // Ps. Search why u need to press Space
-}
-
-void stdoutClear(){
-    printf("\e[1;1H\e[2J");
-}
-
-void default_alert(int alert_type, int alert_code){
-    if(alert_type == 0){
-        switch (alert_code){
-        case 0:
-            printf("\n1. Try again\n2. Create file\nOther. Exit\nChose an option: ");
-            break;
-        case 1:
-            printf("\n🧩 Tip: The file must be in the same folder as the program.\nFile name: ");
-            break;        
-        }
-        return;
-    }
-    if(alert_type == 1){    
-        stdoutClear();
-        switch (alert_code){
-        case 0:
-            printf("\n❌ Invalid answer");
-            stdinClear();
-            break;
-        case 1:
-            printf("❌ File is missing!\n");
-            break;
-        case 2:
-            printf("❌ Invalid file type! \n❌ Try again...\n");
-            break;
-        case 3:
-            printf("❌ Unknown problem! \n❌ Exiting program...\n");
-            break;
-        }
-        return;
-    }
-}
-
-void *find(char *strfont, question *dest){
+void find(char *strfont, question *dest){
     char *bar;
     char *bar2;
     //Passes the Statement
@@ -113,53 +122,43 @@ void convert(question *request){
 }
 
 bool verifyFile(){
-    char aux[8];
     int answer = 0;
-    bool flag = true;
 
-    if((fp = fopen(fileName,"r+")) == NULL){
+    if((fp = fopen(fileName,"r+")) == NULL){ // Verify file existence.
         default_alert(1,1);
-        //Force the user to give a spected answer(ok)
-        do{
-            default_alert(0,0);
-            if (sscanf(fgets(aux, 7, stdin),"%d", &answer) != 1){
+        default_alert(0,2);
+        do{ // Force the user to give a spected answer.
+            if (sscanf(fgets(smallBuff, 7, stdin),"%d", &answer) != 1){ // Verify user choice.
                 default_alert(1,0);
-            }else
+                default_alert(0,2);
+                continue;
+            }
+            switch (answer){ //
+            case 1: // Returns false to restart the process.
+                return false;
                 break;
+            case 2: // Creates a new file.
+                fp = fopen(fileName, "w");
+                fclose(fp);
+                return true;
+                break;
+            case 9: // Exit the program.
+                exit(1);
+                break;
+            default: // Wrong answer, but correct format.
+                default_alert(1,4);
+                default_alert(0,2);
+                break;
+            }
         }while(true);
-        switch (answer){
-        //Read the file name again and returns to itself(ok)
-        case 1:
-            do{
-                default_alert(0,1);
-                scanf("%63s", fileName);
-                stdinClear();
-                if(strstr(fileName,".tdb") != NULL && strchr(fileName , '.') == strrchr(fileName , '.'))
-                    return verifyFile(fileName);
-                else{
-                    default_alert(1,1);
-                }
-            }while(flag == false);
-            break;
-        //Creates a new file
-        case 2:
-            fp = fopen(fileName, "w");
-            fclose(fp);
-            return true;
-            break;
-        //Exit the app
-        default:
-            exit(1);
-            break;
-        }
     }
     else{
         fclose(fp);
         return true;
     }
-}   
+}
 
-//"Safe mode": File should be binary to make harder do read without the correct parameters(Has a lot to do)
+//"Safe mode": File should be binary, making harder to read without the correct parameters(Has a lot to do)
 /*
 void configFile(){
     // Variables
@@ -208,13 +207,13 @@ void qInsert(){
     stdinClear();
 
     for(int i = 0; (i < 3 && flag) || edit != 0; i ++){ // Might be a better way to make it work
-        stdoutClear();
+        consoleClear();
         printf("%s:", (i == 0 ? "Statement" : (i == 1 ? "Answer" : "Tag")));
         fgets((i == 0 ? insert->statement : ( i == 1 ? insert->answer : insert->tag)), (i < 2 ? 2047 : 31), stdin);
         if(i == 2 || edit != 0){
-            stdoutClear();
+            consoleClear();
             do{
-                printf("%s\nA: %s\nTag: %s\nDo you want to edit something?\n1. Statement\n2. Answer\n3. Tags\nOther. Continue\n", insert->statement, insert->answer, insert->tag);
+                printf("%sA: %sTag: %s\nDo you want to edit something?\n1. Statement\n2. Answer\n3. Tags\n9. Continue\n>", insert->statement, insert->answer, insert->tag);
                 if(sscanf(fgets(smallBuff, 7, stdin), "%d\n", &edit) == 0){
                     flag = true;
                     default_alert(1,0);
@@ -222,8 +221,12 @@ void qInsert(){
                     flag = false;
                     if(edit > 0 && edit < 4)
                         i = edit - 2;
-                    else
+                    else if(edit == 9)
                         edit = 0;
+                    else{
+                        default_alert(1,4);
+                        flag = true;
+                    }
                 }
             }while(flag);
         }
@@ -233,6 +236,7 @@ void qInsert(){
     fprintf(fp, "%s%s%s", insert->statement, insert->answer, insert->tag);
     fclose(fp);
     free(insert);
+    default_alert(0,0);
     return;
 }
 
@@ -240,7 +244,7 @@ void tableView(){
     char c, last;
 
     int countb = 0, countn = 1;
-    stdoutClear();
+    consoleClear();
     fp = fopen(fileName, "r");
     printf("1-) ");
     while((c = fgetc(fp)) != '\0' && c != EOF){
@@ -329,7 +333,7 @@ void qEdit(){
             strcat(aux.statement,"\n");
             strcat(aux.answer,"\n");
 
-            stdoutClear();
+            consoleClear();
             do{
                 printf("Select what you want to change:\n1. Statement: %s2. Answer: %s3. Tag: %s", aux.statement, aux.answer, aux.tag);
                 if(sscanf(fgets(smallBuff, 7, stdin), "%d", &id) == 0 || (id < 1 || id > 3))
@@ -360,7 +364,7 @@ void qFilter(){
     bool flag = false;
     char findtag[sizeof(aux.tag)];
 
-    stdoutClear();
+    consoleClear();
     printf("Tag to filter:");
     scanf("%s", findtag);
     strcat(findtag,"\n");
@@ -383,24 +387,25 @@ void qFilter(){
 int main(){
     int aux;
     bool flag = false;
+
     do{
         default_alert(0,1);
         scanf("%63s", fileName);
         stdinClear();
-        if(strstr(fileName,".tdb") != NULL && strchr(fileName , '.') == strrchr(fileName , '.') )
+        if(strstr(fileName,".tdb") != NULL && strchr(fileName , '.') == strrchr(fileName , '.'))
             flag = verifyFile();
-        else{
+        else
             default_alert(1,2);
-        }
     }while(flag == false);
-    stdoutClear();
+
+    consoleClear();
+    printf("✔ File found\n\n");
     do{
-        printf("\n1. Insert\n2. Edit\n3. Delete\n4. Visualize\n5. Filter tags\n6. Build test\nOther. Exit\n\n");
+        printf("1. Insert\n2. Edit\n3. Delete\n4. Visualize\n5. Filter tags\n6. Build test\nOther. Exit\n\n>");
         if(sscanf(fgets(smallBuff, 2, stdin), "%d", &aux) == 0){
             default_alert(1,0);
             continue;
         }
-        stdinClear();
         switch (aux){
         case 1: //Insert
             qInsert();
