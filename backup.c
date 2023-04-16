@@ -202,8 +202,7 @@ void qInsert(){
     question *insert = malloc(sizeof(question));
     int edit = 0;
     bool flag = true;
-    stdinClear();
-    
+    // stdinClear();
     for(int i = 0; (i < 3 && flag) || edit != 0; i ++){ // Might be a better way to make it work.
         consoleClear();
         printf("%s:", (i == 0 ? "Statement" : (i == 1 ? "Answer" : "Tag"))); // Just a way to write everything in just one line.
@@ -272,7 +271,7 @@ void qDelete(){
     char c;
 
     tableView();
-    stdinClear();
+    // stdinClear();
 
     do{
         printf("\nId to delete: ");
@@ -304,7 +303,7 @@ void qDelete(){
 void qEdit(){
     char c;
     int id = 0, count = 1;
-    stdinClear();
+    // stdinClear();
     do{
         tableView();
         printf("\nId to edit: ");
@@ -328,8 +327,8 @@ void qEdit(){
             question aux;
 
             find(bigBuff, &aux);
-            strcat(aux.statement,"\n");
-            strcat(aux.answer,"\n");
+            strcat(aux.statement,"\n\0");
+            strcat(aux.answer,"\n\0");
 
             consoleClear();
             do{
@@ -360,6 +359,7 @@ void qEdit(){
 
     fclose(fpEdited);
     fclose(fp);
+
     default_alert(0,0);
 }
 
@@ -436,5 +436,5 @@ int main(){
             default_alert(1,4);
             break;
         }
-    }while(aux > 1 || aux <  7);
+    }while(true);
 }
