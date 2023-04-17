@@ -461,5 +461,5 @@ int main(){
             default_alert(1,4);
             break;
         }
-    }while(aux > 1 || aux <  7);
+    }while(true);
 }
