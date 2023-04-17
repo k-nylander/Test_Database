@@ -45,7 +45,44 @@ void consoleClear(){
 }
 
 //Project functions
-void default_alert(int alert_type, int alert_code){
+
+void tableView(){
+    /*The question disposing in the file must be one per line because it makes all a lot easier 
+    to work with since fgets reads a whole line. This saves me time but cost some limitations
+    to the app*/
+
+    //Var declaration
+    char c, last;
+    int countb = 0, countn = 1;
+
+    //Prepare the space
+    consoleClear();
+    printf("----------/---------------/----------");
+
+    // Reads all the file characters one by one, searching for the reserved ones. 
+    fp = fopen(fileName, "r");
+    printf("1-) "); // Starts the first line.
+    while((c = fgetc(fp)) != '\0' && c != EOF){
+        if(c == '|'){
+            putchar('\n');
+            if(++countb == 2)
+                printf("Tag: ");
+            continue;
+        }
+        if(last == '\n'){
+            printf("\n%d-) %c", ++countn, c);
+            countb = 0;
+            last = c;
+            continue;
+        }
+        if(c == '\n')
+            last = '\n';
+        putchar(c);
+    }
+    fclose(fp);
+}
+
+void default_alert(int alert_type, int alert_code){ // Function to save some code lines
     if(alert_type == 0){
         switch (alert_code){
         case 0:
@@ -57,7 +94,7 @@ void default_alert(int alert_type, int alert_code){
             break;        
         case 2:
             printf("1. Try again\n2. Create file\n9. Exit\n> ");
-            break;
+            break;        
         }
         return;
     }
@@ -85,7 +122,7 @@ void default_alert(int alert_type, int alert_code){
     }
 }
 
-int lnCount(){
+int lnCount(){ // Count how much questions the file has
     char c;
     int aux = 1;
     fp = fopen(fileName, "r");
@@ -97,20 +134,58 @@ int lnCount(){
     return aux;
 }
 
-void find(char *strfont, question *dest){
-    char *bar;
-    //Passes the Statement
-    strncpy(dest->statement, strfont, strlen(strfont) - strlen(bar = strchr(strfont, '|')));
-    //Passes the Answer
-    bar++;
-    strncpy(dest->answer, bar, strlen(bar) - strlen((strchr(bar, '|'))));
-    //Passes the tag
-    bar = strrchr(strfont,'|');
-    bar++;
-    strcpy(dest->tag, bar);
+int selectId(char *string){ // Read user input and return the id to use
+    int max = lnCount(), id = 0;
+    do{
+        tableView();
+        printf("\nId to %s: ", string);
+        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &id) == 0)
+            default_alert(1,0);
+        else if(id < 1 || id > max)
+            default_alert(1,4);
+        else
+            break;            
+    }while(true);
+    return id;
 }
 
-void convert(question *request){
+void find(char *strfont, question *dest){ // Finds and separe
+    /* This way used to had a bug but a don't know why, so i made it diffrent.
+    char *bar = strchr(strfont, '|');
+    bar++;
+    char *bar2 = strrchr(strfont,'|');
+    bar2++;
+    strcpy(dest->tag, bar2);
+    strncpy(dest->answer, bar, strlen(bar) - strlen(bar2) - 1);
+    strncpy(dest->statement, strfont, strlen(strfont) - (strlen(bar) + 2));
+    */
+    
+    int walkfont, walkdest = 0, step = 0;
+    for(walkfont = 0; strfont[walkfont] != '\0' || strfont[walkfont] != -1; walkfont++){ // Walks by the buffer.
+        if(strfont[walkfont] != '|'){
+            switch(step){
+            case 0:
+                dest->statement[walkdest++] = strfont[walkfont];
+                break;
+            case 1:
+                dest->answer[walkdest++] = strfont[walkfont];
+                break;
+            case 2:
+                dest->tag[walkdest++] = strfont[walkfont];
+                break;
+            }
+        }else{
+            (step == 0 ? dest->statement : (step == 1 ? dest->answer : dest->tag))[++walkdest] = '\0';
+            walkdest = 0;
+            step++;
+        }
+        if(strfont[walkfont] == '\n'){
+            return;
+        }
+    }
+}
+
+void convert(question *request){ // Gets a struct and turns into wanted form
     char *aux = "";
     for(int k = 0; k < 2; k++){
         aux = strchr((k == 0 ? request->statement : request->answer),'\n');
@@ -118,7 +193,7 @@ void convert(question *request){
     }
 }
 
-bool verifyFile(){
+bool verifyFile(){ // Verifies the file existence 
     int answer = 0;
 
     if((fp = fopen(fileName,"r+")) == NULL){ // Verify file existence.
@@ -129,11 +204,11 @@ bool verifyFile(){
                 default_alert(1,0);
                 default_alert(0,2);
                 continue;
-            }
+                }
             switch (answer){ //
             case 1: // Returns false to restart the process.
                 return false;
-                break;
+            break;
             case 2: // Creates a new file.
                 fp = fopen(fileName, "w");
                 fclose(fp);
@@ -146,14 +221,14 @@ bool verifyFile(){
                 default_alert(1,4);
                 default_alert(0,2);
                 break;
-            }
+        }
         }while(true);
     }
     else{
         fclose(fp);
         return true;
     }
-}
+}   
 
 //"Safe mode": File should be binary, making harder to read without the correct parameters(Has a lot to do)
 /*
@@ -197,13 +272,12 @@ void configFile(){
 }
 */
 
-void qInsert(){
+void qInsert(){ // Insert a new question to the file
     // Var. declaration section
     question *insert = malloc(sizeof(question));
     int edit = 0;
     bool flag = true;
-    stdinClear();
-    
+    // stdinClear();
     for(int i = 0; (i < 3 && flag) || edit != 0; i ++){ // Might be a better way to make it work.
         consoleClear();
         printf("%s:", (i == 0 ? "Statement" : (i == 1 ? "Answer" : "Tag"))); // Just a way to write everything in just one line.
@@ -239,48 +313,10 @@ void qInsert(){
     return;
 }
 
-void tableView(){
-    char c, last;
-
-    int countb = 0, countn = 1;
-    consoleClear();
-    fp = fopen(fileName, "r");
-    printf("1-) ");
-    while((c = fgetc(fp)) != '\0' && c != EOF){
-        if(c == '|'){
-            putchar('\n');
-            if(++countb == 2)
-                printf("Tag: ");
-            continue;
-        }
-        if(last == '\n'){
-            printf("\n%d-) %c", ++countn, c);
-            countb = 0;
-            last = c;
-            continue;
-        }
-        if(c == '\n')
-            last = '\n';
-        putchar(c);
-    }
-    fclose(fp);
-}
-
-void qDelete(){
-    int id = 0;
-    int count = 1;
+void qDelete(){ // Delete a question from the file
+    // Var declaration
+    int count = 1, id = selectId("delete");
     char c;
-
-    tableView();
-    stdinClear();
-
-    do{
-        printf("\nId to delete: ");
-        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &id) == 0 || (id > lnCount() || id < 1))
-            default_alert(1,0);
-        else
-            break;            
-    }while(true);
 
     fp = fopen(fileName, "r");
     FILE *fpDel = fopen("temp", "w");
@@ -297,24 +333,13 @@ void qDelete(){
 
     fclose(fpDel);
     fclose(fp);
-    
+
     default_alert(0,0);
 }
 
-void qEdit(){
+void qEdit(){ // Edit a question from the file
     char c;
-    int id = 0, count = 1;
-    stdinClear();
-    do{
-        tableView();
-        printf("\nId to edit: ");
-        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &id) == 0)
-            default_alert(1,0);
-        else if ( id > lnCount() || id < 1)
-            default_alert(1,0);
-        else
-            break;
-    }while(true);
+    int id = selectId("edit"), count = 1;
 
     fp = fopen(fileName,"r");
     FILE *fpEdited = fopen("temp","w");
@@ -323,14 +348,14 @@ void qEdit(){
         if(c == '\n')
             count++;
         if(count == id){
-            fputc(c,fpEdited);
+            id == 1 ? rewind(fp) : fputc(c,fpEdited);
             fgets(bigBuff, 4095, fp);
+            // Formats the line into the right format to process
             question aux;
-
             find(bigBuff, &aux);
-            strcat(aux.statement,"\n");
-            strcat(aux.answer,"\n");
-
+            strcat(aux.statement,"\n"); // I had to do this to fits
+            strcat(aux.answer,"\n");    // into convert().
+            strcat(aux.tag,"\n");
             consoleClear();
             do{
                 printf("Select what you want to change:\n1. Statement: %s2. Answer: %s3. Tag: %s\n9. Back to menu\n> ", aux.statement, aux.answer, aux.tag);
@@ -354,16 +379,16 @@ void qEdit(){
             fputc(c,fpEdited);
         }
     }
-
+    // Manage the files
     remove(fileName);
     rename("temp", fileName);
-
+    // Finishes
     fclose(fpEdited);
     fclose(fp);
     default_alert(0,0);
 }
 
-void qFilter(){
+void qFilter(){ // Shows every question that has a determined tag(i'll make with multiple tags later)
     question aux;
     int lines = lnCount();
     bool flag = false;
@@ -392,7 +417,7 @@ void qFilter(){
 int main(){
     int aux;
     bool flag = false;
-
+    
     do{ // Forces a valid filename.
         default_alert(0,1);
         scanf("%63s", fileName);
@@ -403,33 +428,33 @@ int main(){
             default_alert(1,2);
     }while(flag == false);
     consoleClear();
-    printf("✔ File found\n\n");
+    printf("✔ File found\n");
     do{
-        printf("1. Insert\n2. Edit\n3. Delete\n4. Visualize\n5. Filter tags\n6. Build test\n\n9. Exit\n>");
+        printf("\n1. Insert\n2. Edit\n3. Delete\n4. Visualize\n5. Filter tags\n6. Build test\n\n9. Exit\n>");
         if(sscanf(fgets(smallBuff, 7, stdin), "%d", &aux) == 0){ // Gets the action selected
             default_alert(1,0);
             continue;
         }
         switch (aux){
-        case 1: //Insert
+        case 1:
             qInsert();
             break;
-        case 2: //Insert
+        case 2:
             qEdit();
             break;
-        case 3: // Delete
+        case 3:
             qDelete();
             break;
-        case 4: // Visualize
+        case 4:
             tableView();
             break;
-        case 5: // Filter
+        case 5:
             qFilter();
             break;
-        case 6: // Build
-            // buildFile(); 
+        case 6:
+            buildFile();
             break;
-        case 9: // Exit
+        case 9:
             return 0;
             break;
         default: // Right format, wrong choice
