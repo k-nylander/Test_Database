@@ -2,36 +2,28 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-
+#include <time.h>
+#include <stdarg.h>
 /*
 Cool ideas:
 - Safe mode(Maybe ain't good in C)
 - Multiple Tags(Char matrix)
 */
+// tableView()
+#define PRINT_ALL 0,-1
+#define END_ARG -1
 
-#define CREATE_CFG 0
-#define VERIFY_CFG 1
-
-//Comparision macro
-#define compare(x, y1, y2) x == y1 || x == y2
-
-/* Parameters for function "find" */
-#define STAF 1
-#define ANSF 2
-#define TAGF 3
+typedef struct{//Question structure
+    char statement[2048];
+    char answer[2048];
+    char tag[32];
+}question;
 
 // --- Global variables (made that way to be easier to build Safe Mode)
 FILE *fp;
 char fileName[64] = "";
 char smallBuff[8]; //I think it's some kind of "System Vulnerability" but in this program it ain't relevant.
-char bigBuff[4096];
-
-//Question structure
-typedef struct{
-    char statement[2048];
-    char answer[2048];
-    char tag[32];
-}question;
+char bigBuff[8192];
 
 // Usefull functions
 void stdinClear(){
@@ -44,40 +36,54 @@ void consoleClear(){
     printf("\e[1;1H\e[2J");
 }
 
-//Project functions
+bool cmplist(int compare, int init, va_list args){
+    int argn;
+    if(compare == args)
+        return true;
+    while((argn = va_arg(args, int)) != -1){
+        if(compare == argn)
+            return true;
+    }
+    return false;
+}
 
-void tableView(){
+void tableView(int id, ...){
     /*The question disposing in the file must be one per line because it makes all a lot easier 
     to work with since fgets reads a whole line. This saves me time but cost some limitations
     to the app*/
 
     //Var declaration
-    char c, last;
+    char c, last = '\n';
     int countb = 0, countn = 1;
-
+    va_list args, args2;
+    va_start(args, id);
     //Prepare the space
     consoleClear();
-    printf("----------/---------------/----------");
+    printf("----------/---------------/----------\n");
 
     // Reads all the file characters one by one, searching for the reserved ones. 
     fp = fopen(fileName, "r");
-    printf("1-) "); // Starts the first line.
     while((c = fgetc(fp)) != '\0' && c != EOF){
-        if(c == '|'){
-            putchar('\n');
-            if(++countb == 2)
-                printf("Tag: ");
-            continue;
+        va_copy(args2,args);
+        if(cmplist(countn, id, args2) == false){
+            if(last == '\n'){
+                printf("\n%d-) %c", countn, c);
+                countb = 0;
+                last = c;
+                continue;
+            }
+            if(c == '|'){
+                putchar('\n');
+                if(++countb == 2)
+                    printf("Tag: ");
+                continue;
+            }
+            putchar(c);
         }
-        if(last == '\n'){
-            printf("\n%d-) %c", ++countn, c);
-            countb = 0;
-            last = c;
-            continue;
-        }
-        if(c == '\n')
+        if(c == '\n'){
             last = '\n';
-        putchar(c);
+            countn++;
+        }
     }
     fclose(fp);
 }
@@ -137,7 +143,7 @@ int lnCount(){ // Count how much questions the file has
 int selectId(char *string){ // Read user input and return the id to use
     int max = lnCount(), id = 0;
     do{
-        tableView();
+        tableView(PRINT_ALL);
         printf("\nId to %s: ", string);
         if(sscanf(fgets(smallBuff, 7, stdin), "%d", &id) == 0)
             default_alert(1,0);
@@ -272,6 +278,7 @@ void configFile(){
 }
 */
 
+//Project functions
 void qInsert(){ // Insert a new question to the file
     // Var. declaration section
     question *insert = malloc(sizeof(question));
@@ -349,7 +356,7 @@ void qEdit(){ // Edit a question from the file
             count++;
         if(count == id){
             id == 1 ? rewind(fp) : fputc(c,fpEdited);
-            fgets(bigBuff, 4095, fp);
+            fgets(bigBuff, 8191, fp);
             // Formats the line into the right format to process
             question aux;
             find(bigBuff, &aux);
@@ -389,6 +396,8 @@ void qEdit(){ // Edit a question from the file
 }
 
 void qFilter(){ // Shows every question that has a determined tag(i'll make with multiple tags later)
+    /* I made this function before*/
+    
     question aux;
     int lines = lnCount();
     bool flag = false;
@@ -398,10 +407,10 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
     printf("Tag to filter:");
     scanf("%s", findtag);
     strcat(findtag,"\n");
-
     fp = fopen(fileName,"r");
+
     for(int i = 1; i < lines; i++){
-        fgets(bigBuff, 4095, fp);
+        fgets(bigBuff, 8191, fp);
         find(bigBuff,&aux);
         if(strcmp(aux.tag, findtag) == 0){
             flag = true;
@@ -412,6 +421,18 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
         printf("❌ Impossible to find this tag\n"); 
     }
     fclose(fp);
+}
+
+void buildFile(){ // Makes the magic happen
+    int aux;
+    consoleClear();
+    do{
+        printf("The test might have:\n1. All the questions.\n2. A number of questions.\n3. Questions with similar tags.");
+        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &aux) == 0){ // Gets the action selected
+            default_alert(1,0);
+            continue;
+        }
+    }while(true);
 }
 
 int main(){
@@ -446,7 +467,7 @@ int main(){
             qDelete();
             break;
         case 4:
-            tableView();
+            tableView(PRINT_ALL);
             break;
         case 5:
             qFilter();
