@@ -38,7 +38,7 @@ void consoleClear(){
 
 bool cmplist(int compare, int init, va_list args){
     int argn;
-    if(compare == args)
+    if(compare == init)
         return true;
     while((argn = va_arg(args, int)) != -1){
         if(compare == argn)
@@ -323,24 +323,16 @@ void qInsert(){ // Insert a new question to the file
 void qDelete(){ // Delete a question from the file
     // Var declaration
     int count = 1, id = selectId("delete");
-    char c;
-
     fp = fopen(fileName, "r");
     FILE *fpDel = fopen("temp", "w");
-
-    while ((c = fgetc(fp)) != EOF){
-        if(c == '\n')
-            count++;
-        if(count != id)
-            fputc(c, fpDel);
+    while (fgets(bigBuff, 8191, fp) != NULL){
+        if(count++ != id)
+            fprintf(fpDel,"%s", bigBuff);
     }
-
     remove(fileName);
     rename("temp", fileName);
-
     fclose(fpDel);
     fclose(fp);
-
     default_alert(0,0);
 }
 
