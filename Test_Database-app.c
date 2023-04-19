@@ -59,7 +59,7 @@ void tableView(int id, ...){
     va_start(args, id);
     //Prepare the space
     consoleClear();
-    printf("----------/---------------/----------\n");
+    printf("⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇ -- THE TABLE -- ⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇\n");
 
     // Reads all the file characters one by one, searching for the reserved ones. 
     fp = fopen(fileName, "r");
@@ -129,12 +129,12 @@ void default_alert(int alert_type, int alert_code){ // Function to save some cod
 }
 
 int lnCount(){ // Count how much questions the file has
-    char c;
-    int aux = 1;
+    int aux = 0;
     fp = fopen(fileName, "r");
-    while((c = fgetc(fp)) != EOF && c != '\0'){
-        if(c == '\n')
-            aux++;
+    while(fgets(bigBuff, 8191, fp)!=NULL){
+        if(strcmp(bigBuff,"\n") == 0)
+            return aux;
+        aux++;
     }
     fclose(fp);
     return aux;
@@ -168,7 +168,7 @@ void find(char *strfont, question *dest){ // Finds and separe
     
     int walkfont, walkdest = 0, step = 0;
     for(walkfont = 0; strfont[walkfont] != '\0' || strfont[walkfont] != -1; walkfont++){ // Walks by the buffer.
-        if(strfont[walkfont] != '|'){
+        if(strfont[walkfont] != '|' && strfont[walkfont] != '\n'){
             switch(step){
             case 0:
                 dest->statement[walkdest++] = strfont[walkfont];
@@ -181,12 +181,21 @@ void find(char *strfont, question *dest){ // Finds and separe
                 break;
             }
         }else{
-            (step == 0 ? dest->statement : (step == 1 ? dest->answer : dest->tag))[++walkdest] = '\0';
+            switch (step){
+                case 0:
+                    dest->statement[walkdest] = '\0';
+                    break;
+                case 1:
+                    dest->answer[walkdest] = '\0';
+                    break;
+                case 2:
+                    dest->tag[walkdest++] = '\n';
+                    dest->tag[walkdest] = '\0';
+                    return;
+                    break;
+            }  
             walkdest = 0;
             step++;
-        }
-        if(strfont[walkfont] == '\n'){
-            return;
         }
     }
 }
@@ -313,6 +322,9 @@ void qInsert(){ // Insert a new question to the file
     // Format and insert the string into the file.
     convert(insert);
     fp = fopen(fileName, "a+");
+    fseek(fp, -1, SEEK_END);
+    if(fgetc(fp)!='\n')
+        fputc('\n',fp);
     fprintf(fp, "%s%s%s", insert->statement, insert->answer, insert->tag);
     fclose(fp);
     free(insert);
@@ -337,20 +349,15 @@ void qDelete(){ // Delete a question from the file
 }
 
 void qEdit(){ // Edit a question from the file
-    char c;
     int id = selectId("edit"), count = 1;
 
     fp = fopen(fileName,"r");
     FILE *fpEdited = fopen("temp","w");
 
-    while((c = fgetc(fp)) != '\0' && c != EOF){
-        if(c == '\n')
-            count++;
-        if(count == id){
-            id == 1 ? rewind(fp) : fputc(c,fpEdited);
-            fgets(bigBuff, 8191, fp);
-            // Formats the line into the right format to process
+    while(fgets(bigBuff, 8191, fp) != NULL){
+        if(count++ == id){
             question aux;
+            // Formats the line into the right format to process
             find(bigBuff, &aux);
             strcat(aux.statement,"\n"); // I had to do this to fits
             strcat(aux.answer,"\n");    // into convert().
@@ -373,9 +380,8 @@ void qEdit(){ // Edit a question from the file
             fgets((id == 1 ? aux.statement : ( id == 2 ? aux.answer : aux.tag)), (id < 2 ? 2047 : 31), stdin);
             convert(&aux);
             fprintf(fpEdited, "%s%s%s", aux.statement, aux.answer, aux.tag);
-            count++;
         }else{
-            fputc(c,fpEdited);
+            fprintf(fpEdited,"%s",bigBuff);
         }
     }
     // Manage the files
@@ -391,18 +397,17 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
     /* I made this function before*/
     
     question aux;
-    int lines = lnCount();
+    int i = 0;
     bool flag = false;
     char findtag[sizeof(aux.tag)];
 
     consoleClear();
     printf("Tag to filter:");
     scanf("%s", findtag);
-    strcat(findtag,"\n");
+    strcat(findtag,"\n\0");
     fp = fopen(fileName,"r");
-
-    for(int i = 1; i < lines; i++){
-        fgets(bigBuff, 8191, fp);
+    while(fgets(bigBuff, 8191, fp) != NULL){         
+        i++;
         find(bigBuff,&aux);
         if(strcmp(aux.tag, findtag) == 0){
             flag = true;
@@ -410,7 +415,8 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
         }
     }
     if(flag == false){
-        printf("❌ Impossible to find this tag\n"); 
+        printf("❌ Impossible to find this tag\n");
+        stdinClear();
     }
     fclose(fp);
 }
