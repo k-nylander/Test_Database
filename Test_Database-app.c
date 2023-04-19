@@ -47,42 +47,73 @@ bool cmplist(int compare, int init, va_list args){
     return false;
 }
 
+void find(char *strfont, question *dest){ // Finds and separe
+    /* This way used to had a bug but a don't know why, so i made it diffrent.
+    char *bar = strchr(strfont, '|');
+    bar++;
+    char *bar2 = strrchr(strfont,'|');
+    bar2++;
+    strcpy(dest->tag, bar2);
+    strncpy(dest->answer, bar, strlen(bar) - strlen(bar2) - 1);
+    strncpy(dest->statement, strfont, strlen(strfont) - (strlen(bar) + 2));
+    */
+    
+    int walkfont, walkdest = 0, step = 0;
+    for(walkfont = 0; strfont[walkfont] != '\0' || strfont[walkfont] != -1; walkfont++){ // Walks by the buffer.
+        if(strfont[walkfont] != '|' && strfont[walkfont] != '\n'){
+            switch(step){
+            case 0:
+                dest->statement[walkdest++] = strfont[walkfont];
+                break;
+            case 1:
+                dest->answer[walkdest++] = strfont[walkfont];
+                break;
+            case 2:
+                dest->tag[walkdest++] = strfont[walkfont];
+                break;
+            }
+        }else{
+            switch (step){
+                case 0:
+                    dest->statement[walkdest] = '\0';
+                    break;
+                case 1:
+                    dest->answer[walkdest] = '\0';
+                    break;
+                case 2:
+                    dest->tag[walkdest++] = '\n';
+                    dest->tag[walkdest] = '\0';
+                    return;
+                    break;
+            }  
+            walkdest = 0;
+            step++;
+        }
+    }
+}
+
 void tableView(int id, ...){
     /*The question disposing in the file must be one per line because it makes all a lot easier 
     to work with since fgets reads a whole line. This saves me time but cost some limitations
     to the app*/
 
     //Var declaration
-    char c, last = '\n';
-    int countb = 0, countn = 1;
+    int i = 1;
+    question aux;
     va_list args, args2;
     va_start(args, id);
     //Prepare the space
+
     consoleClear();
-    printf("⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇ -- THE TABLE -- ⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇\n");
+    printf("\n⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇ -- THE TABLE -- ⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇⬇\n\n");
 
     // Reads all the file characters one by one, searching for the reserved ones. 
     fp = fopen(fileName, "r");
-    while((c = fgetc(fp)) != '\0' && c != EOF){
+    while(fgets(bigBuff, 8191, fp) != NULL && strcmp(bigBuff,"\n") != 0){
         va_copy(args2,args);
-        if(cmplist(countn, id, args2) == false){
-            if(last == '\n'){
-                printf("\n%d-) %c", countn, c);
-                countb = 0;
-                last = c;
-                continue;
-            }
-            if(c == '|'){
-                putchar('\n');
-                if(++countb == 2)
-                    printf("Tag: ");
-                continue;
-            }
-            putchar(c);
-        }
-        if(c == '\n'){
-            last = '\n';
-            countn++;
+        if(cmplist(i++, id, args2) == false){
+            find(bigBuff,&aux);
+            printf("%d-) %s\n>>> %s\nTag: %s\n",i-1 , aux.statement, aux.answer, aux.tag);
         }
     }
     fclose(fp);
@@ -153,51 +184,6 @@ int selectId(char *string){ // Read user input and return the id to use
             break;            
     }while(true);
     return id;
-}
-
-void find(char *strfont, question *dest){ // Finds and separe
-    /* This way used to had a bug but a don't know why, so i made it diffrent.
-    char *bar = strchr(strfont, '|');
-    bar++;
-    char *bar2 = strrchr(strfont,'|');
-    bar2++;
-    strcpy(dest->tag, bar2);
-    strncpy(dest->answer, bar, strlen(bar) - strlen(bar2) - 1);
-    strncpy(dest->statement, strfont, strlen(strfont) - (strlen(bar) + 2));
-    */
-    
-    int walkfont, walkdest = 0, step = 0;
-    for(walkfont = 0; strfont[walkfont] != '\0' || strfont[walkfont] != -1; walkfont++){ // Walks by the buffer.
-        if(strfont[walkfont] != '|' && strfont[walkfont] != '\n'){
-            switch(step){
-            case 0:
-                dest->statement[walkdest++] = strfont[walkfont];
-                break;
-            case 1:
-                dest->answer[walkdest++] = strfont[walkfont];
-                break;
-            case 2:
-                dest->tag[walkdest++] = strfont[walkfont];
-                break;
-            }
-        }else{
-            switch (step){
-                case 0:
-                    dest->statement[walkdest] = '\0';
-                    break;
-                case 1:
-                    dest->answer[walkdest] = '\0';
-                    break;
-                case 2:
-                    dest->tag[walkdest++] = '\n';
-                    dest->tag[walkdest] = '\0';
-                    return;
-                    break;
-            }  
-            walkdest = 0;
-            step++;
-        }
-    }
 }
 
 void convert(question *request){ // Gets a struct and turns into wanted form
