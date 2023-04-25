@@ -13,6 +13,9 @@ Cool ideas:
 #define PRINT_ALL 0,-1
 #define END_ARG -1
 
+#define fPRINTTEST 1
+#define fPRINTSOLVED 2
+
 typedef struct{//Question structure
     char statement[2048];
     char answer[2048];
@@ -154,6 +157,9 @@ void default_alert(int alert_type, int alert_code){ // Function to save some cod
         case 4:
             printf("❌ You need to chose one of the options\n\n");
             break;
+        case 5:
+            printf("❌ Conflicting files!! The app can't proceed...\n🧩 You must move the old 'Test.txt' and 'Results.txt' from the directory.\n\n");
+            break;
         }
         return;
     }
@@ -191,6 +197,27 @@ void convert(question *request){ // Gets a struct and turns into wanted form
     for(int k = 0; k < 2; k++){
         aux = strchr((k == 0 ? request->statement : request->answer),'\n');
         *aux = '|';
+    }
+}
+
+void fprintId(FILE *fpDest, int id, int questionNumber, int paramether){
+    int i = 0;
+    fp = fopen(fileName,"r");
+    while(i++ != id)
+        fgets(bigBuff, 8191, fp);
+    question aux;
+    find(bigBuff, &aux);
+    switch (paramether){
+    case 1:
+        fprintf(fpDest,"\n%d-) %s\n", questionNumber, aux.statement);
+        for(int j = 0; j < 4; j++)
+            fprintf(fpDest,"___________________________________________________________\n");
+        fclose(fp);
+        break;
+    default:
+        fprintf(fpDest,"\n%d-) %s\n>>> %s\n", questionNumber, aux.statement, aux.answer);
+        fclose(fp);
+        break;
     }
 }
 
@@ -408,15 +435,71 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
 }
 
 void buildFile(){ // Makes the magic happen
-    int aux;
+    int aux[2] = {0};
     consoleClear();
-    do{
-        printf("The test might have:\n1. All the questions.\n2. A number of questions.\n3. Questions with similar tags.");
-        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &aux) == 0){ // Gets the action selected
+    char *string1 = "The test might have:\n1. All the questions.\n2. A number of questions.\n3. Questions with similar tags.\n9. Back to menu.\n";
+    char *string2 = "The questions will be:\n1. Normally ordered.\n2. Equally shuffled.\n3. Individually shuffled.\n9. Back to menu.\n";
+    for (int i = 0; i < 2; i++){
+        consoleClear();
+        printf("%s", (i==0 ? string1:string2));
+        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &aux[i]) == 0){ // Reads the  selected
             default_alert(1,0);
-            continue;
+            i--;
+        }if((aux[i] < 1 || aux[i] > 3) && aux[i] != 9){
+            default_alert(1,4);
+            i--;
         }
-    }while(true);
+        if(aux[i] == 9)
+            return;
+    }
+    FILE *fpTest, *fpResult;
+    if(((fpTest = fopen("Test.txt", "r")) != NULL)){
+        default_alert(1,5);
+        fclose(fpTest);
+        return;
+    }else{
+        fpTest = fopen("Test.txt", "w");
+    }
+    if(((fpResult = fopen("Result.txt", "r")) != NULL)){
+        default_alert(1,5);
+        fclose(fpResult);
+        return;
+    }else{
+        fpTest = fopen("Result.txt", "w");
+    }
+    int order[lnCount()], i = -1;
+    // bool flagShuffle = false, flagIndvShuffle = false;
+    switch (aux[0]){
+    case 1:
+        break;
+    case 2:
+        printf("IDs (To finish, press Enter in a empty line):\n");
+        while(sscanf(fgets(bigBuff, 8191, stdin),"%d\n",&order[++i]) != 0 && strcmp(bigBuff,"\n") != 0 && i < lnCount())
+            if(order[i] < 1 || order[i] > lnCount()){
+                default_alert(1,4);
+                printf("Starting again...(To finish, press Enter in a empty line):\n");
+                i = -1;
+            }
+        int nrandom;
+        srand(time(NULL));
+        for(int j = 0; j < i; j++){
+            if((nrandom = rand()%i) == j){
+                j--;
+                continue;
+            }
+            order[nrandom] += order[j];
+            order[j] = order[nrandom] - order[j];
+            order[nrandom] -= order[j];
+        }
+        for (int k = 0; k < i; k++){
+            fprintId(fpTest, order[k], k+1, fPRINTTEST);
+            fprintId(fpResult, order[k], k+1, fPRINTSOLVED);
+        }
+        
+        break;
+    case 3:
+        break;
+    }
 }
 
 int main(){
