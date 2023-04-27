@@ -61,6 +61,8 @@ void find(char *strfont, question *dest){ // Finds and separe
     strncpy(dest->statement, strfont, strlen(strfont) - (strlen(bar) + 2));
     */
     
+    if(strcmp(strfont, "\n") == 0 || strcmp(strfont, "\0") == 0)
+        return;
     int walkfont, walkdest = 0, step = 0;
     for(walkfont = 0; strfont[walkfont] != '\0' || strfont[walkfont] != -1; walkfont++){ // Walks by the buffer.
         if(strfont[walkfont] != '|' && strfont[walkfont] != '\n'){
@@ -158,7 +160,7 @@ void default_alert(int alert_type, int alert_code){ // Function to save some cod
             printf("❌ You need to chose one of the options\n\n");
             break;
         case 5:
-            printf("❌ Conflicting files!! The app can't proceed...\n🧩 You must move the old 'Test.txt' and 'Results.txt' from the directory.\n\n");
+            printf("❌ Conflicting files!! The app can't proceed...\n🧩 You must move the old 'Test.txt' and 'Results.txt' from the directory.\n");
             break;
         }
         return;
@@ -177,11 +179,25 @@ int lnCount(){ // Count how much questions the file has
     return aux;
 }
 
-int selectId(char *string){ // Read user input and return the id to use
+char *qLine(int id){
+    FILE *fpAux = fopen(fileName,"r+");
+    int count = 1, max = lnCount();
+    if(id < 1 || id > max)
+        return "";
+    rewind(fpAux);
+    fseek(fpAux,0,SEEK_SET);
+    do{
+        fgets(bigBuff,8191, fpAux);
+    }while(count++ != id);
+    fclose(fpAux);
+    return bigBuff;
+}
+
+int selectId(char *inputName){ // Read user input and return the id to use
     int max = lnCount(), id = 0;
     do{
         tableView(PRINT_ALL);
-        printf("\nId to %s: ", string);
+        printf("\nId to %s: ", inputName);
         if(sscanf(fgets(smallBuff, 7, stdin), "%d", &id) == 0)
             default_alert(1,0);
         else if(id < 1 || id > max)
@@ -192,10 +208,10 @@ int selectId(char *string){ // Read user input and return the id to use
     return id;
 }
 
-void convert(question *request){ // Gets a struct and turns into wanted form
+void convert(question *dest){ // Gets a struct and turns into wanted form
     char *aux = "";
     for(int k = 0; k < 2; k++){
-        aux = strchr((k == 0 ? request->statement : request->answer),'\n');
+        aux = strchr((k == 0 ? dest->statement : dest->answer),'\n');
         *aux = '|';
     }
 }
@@ -362,16 +378,15 @@ void qDelete(){ // Delete a question from the file
 }
 
 void qEdit(){ // Edit a question from the file
-    int id = selectId("edit"), count = 1;
+    int id = selectId("edit");
 
-    fp = fopen(fileName,"r");
     FILE *fpEdited = fopen("temp","w");
 
-    while(fgets(bigBuff, 8191, fp) != NULL){
-        if(count++ == id){
+    for(int i = 1; i <= lnCount(); i++ ){
+        if(i == id){
             question aux;
             // Formats the line into the right format to process
-            find(bigBuff, &aux);
+            find(qLine(i), &aux);
             strcat(aux.statement,"\n"); // I had to do this to fits
             strcat(aux.answer,"\n");    // into convert().
             strcat(aux.tag,"\n");
@@ -394,7 +409,7 @@ void qEdit(){ // Edit a question from the file
             convert(&aux);
             fprintf(fpEdited, "%s%s%s", aux.statement, aux.answer, aux.tag);
         }else{
-            fprintf(fpEdited,"%s",bigBuff);
+            fprintf(fpEdited,"%s",qLine(i));
         }
     }
     // Manage the files
@@ -402,7 +417,6 @@ void qEdit(){ // Edit a question from the file
     rename("temp", fileName);
     // Finishes
     fclose(fpEdited);
-    fclose(fp);
     default_alert(0,0);
 }
 
@@ -410,7 +424,6 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
     /* I made this function before*/
     
     question aux;
-    int i = 0;
     bool flag = false;
     char findtag[sizeof(aux.tag)];
 
@@ -418,10 +431,8 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
     printf("Tag to filter:");
     scanf("%s", findtag);
     strcat(findtag,"\n\0");
-    fp = fopen(fileName,"r");
-    while(fgets(bigBuff, 8191, fp) != NULL){         
-        i++;
-        find(bigBuff,&aux);
+    for(int i = 1; i <= lnCount(); i++){
+        find(qLine(i),&aux);
         if(strcmp(aux.tag, findtag) == 0){
             flag = true;
             printf("\n%d-) %s\n%s\n", i, aux.statement, aux.answer);
@@ -431,27 +442,40 @@ void qFilter(){ // Shows every question that has a determined tag(i'll make with
         printf("❌ Impossible to find this tag\n");
         stdinClear();
     }
-    fclose(fp);
 }
 
 void buildFile(){ // Makes the magic happen
-    int aux[2] = {0};
+    // Var section
+    int mode, shuffle;
+    bool flag = false;
+    
+    // User input section: Chosing test type.
     consoleClear();
-    char *string1 = "The test might have:\n1. All the questions.\n2. A number of questions.\n3. Questions with similar tags.\n9. Back to menu.\n";
-    char *string2 = "The questions will be:\n1. Normally ordered.\n2. Equally shuffled.\n3. Individually shuffled.\n9. Back to menu.\n";
-    for (int i = 0; i < 2; i++){
-        consoleClear();
-        printf("%s", (i==0 ? string1:string2));
-        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &aux[i]) == 0){ // Reads the  selected
+    do{
+        printf("The test might have:\n1. All the questions.\n2. A number of questions.\n3. Questions with similar tags.\n9. Back to menu.\n");
+        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &mode) == 0){ // Reads the  selected
             default_alert(1,0);
-            i--;
-        }if((aux[i] < 1 || aux[i] > 3) && aux[i] != 9){
+            continue;
+        }if((mode < 1 || mode > 3) && mode != 9)
             default_alert(1,4);
-            i--;
-        }
-        if(aux[i] == 9)
-            return;
-    }
+    }while((mode < 1 || mode > 3) && mode != 9);
+    if(mode == 9)
+        return;
+    
+    consoleClear();
+    do{
+        printf("The questions will be:\n1. Normally ordered.\n2. Shuffled.\n9. Back to menu.\n");
+        if(sscanf(fgets(smallBuff, 7, stdin), "%d", &shuffle) == 0){ // Reads the  selected
+            default_alert(1,0);
+            continue;
+        }if(shuffle != 1 && shuffle != 2 && shuffle != 9)
+            default_alert(1,4);
+    }while((shuffle < 1 || shuffle > 2) && shuffle != 9);
+    if(shuffle == 2)
+        flag = true;
+    if(shuffle == 9)
+        return;
+    
     FILE *fpTest, *fpResult;
     if(((fpTest = fopen("Test.txt", "r")) != NULL)){
         default_alert(1,5);
@@ -460,46 +484,53 @@ void buildFile(){ // Makes the magic happen
     }else{
         fpTest = fopen("Test.txt", "w");
     }
+
     if(((fpResult = fopen("Result.txt", "r")) != NULL)){
         default_alert(1,5);
-        fclose(fpResult);
+        fclose(fpTest);
         return;
     }else{
-        fpTest = fopen("Result.txt", "w");
+        fpResult = fopen("Result.txt", "w");
     }
-    int order[lnCount()], i = -1;
-    // bool flagShuffle = false, flagIndvShuffle = false;
-    switch (aux[0]){
+
+    int order[lnCount()];
+    int step = 0;
+    switch (mode){
     case 1:
+        for (step = 0; step < lnCount(); step++)
+            order[step] = step+1;
         break;
     case 2:
+        tableView(PRINT_ALL);
         printf("IDs (To finish, press Enter in a empty line):\n");
-        while(sscanf(fgets(bigBuff, 8191, stdin),"%d\n",&order[++i]) != 0 && strcmp(bigBuff,"\n") != 0 && i < lnCount())
-            if(order[i] < 1 || order[i] > lnCount()){
+        step = -1;
+        while(sscanf(fgets(bigBuff, 8191, stdin),"%d\n",&order[++step]) != 0 && strcmp(bigBuff,"\n") != 0 && step < lnCount()){
+            if(order[step] < 1 || order[step] > lnCount()){
+                tableView(PRINT_ALL);
                 default_alert(1,4);
                 printf("Starting again...(To finish, press Enter in a empty line):\n");
-                i = -1;
+                step = -1;
             }
-        int nrandom;
-        srand(time(NULL));
-        for(int j = 0; j < i; j++){
-            if((nrandom = rand()%i) == j){
-                j--;
-                continue;
-            }
-            order[nrandom] += order[j];
-            order[j] = order[nrandom] - order[j];
-            order[nrandom] -= order[j];
         }
-        for (int k = 0; k < i; k++){
-            fprintId(fpTest, order[k], k+1, fPRINTTEST);
-            fprintId(fpResult, order[k], k+1, fPRINTSOLVED);
-        }
-        
         break;
     case 3:
+        question aux;
+        char findtag[sizeof(aux.tag)];
+        consoleClear();
+        printf("\nThe questions might have tag:");
+        scanf("%s", findtag);
+        stdinClear();
+        strcat(findtag,"\n\0");
+        for(int h = 1; h <= lnCount(); h++){
+            find(qLine(h),&aux);
+            if(strcmp(aux.tag, findtag) == 0){
+                order[step++] = h;
+            }
+        }
         break;
-    }
+    }    
+    fclose(fpTest);
+    fclose(fpResult);
 }
 
 int main(){
@@ -538,6 +569,7 @@ int main(){
             break;
         case 5:
             qFilter();
+            stdinClear();
             break;
         case 6:
             buildFile();
