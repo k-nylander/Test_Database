@@ -15,6 +15,9 @@ Cool ideas:
 
 #define fPRINTTEST 1
 #define fPRINTSOLVED 2
+#define fPRINTLINE 3
+#define fPRINTLINE 3
+
 
 typedef struct{//Question structure
     char statement[2048];
@@ -216,25 +219,48 @@ void convert(question *dest){ // Gets a struct and turns into wanted form
     }
 }
 
-void fprintId(FILE *fpDest, int id, int questionNumber, int paramether){
-    int i = 0;
+void fprintId(FILE *fpDest, int id, int questionNumber, int paramether, int lnParamether){
     fp = fopen(fileName,"r");
-    while(i++ != id)
-        fgets(bigBuff, 8191, fp);
     question aux;
-    find(bigBuff, &aux);
+    find(qLine(id), &aux);
     switch (paramether){
     case 1:
         fprintf(fpDest,"\n%d-) %s\n", questionNumber, aux.statement);
         for(int j = 0; j < 4; j++)
-            fprintf(fpDest,"___________________________________________________________\n");
-        fclose(fp);
+            if(lnParamether == fPRINTLINE)
+                fprintf(fpDest,"_______________________________________________________________\n");
+            else
+                fprintf(fpDest,"\n");
+
         break;
     default:
         fprintf(fpDest,"\n%d-) %s\n>>> %s\n", questionNumber, aux.statement, aux.answer);
-        fclose(fp);
         break;
     }
+}
+
+void ajustFile(){
+    fp = fopen(fileName,"r");
+    FILE *temp = fopen("temp","w");
+    char c, last;
+    while((c = fgetc(fp)) == '\n');
+    fputc(c,temp);
+    while((c = fgetc(fp)) != '\0' && c != EOF){
+        if(last == '\n'){
+            if (c == '\n')
+                continue;
+            else
+                last = c;
+        }
+        if(c == '\n'){
+                last = c;
+        }
+        fputc(c,temp);
+    }
+    remove(fileName);
+    rename("temp", fileName);
+    fclose(temp);
+    fclose(fp);
 }
 
 bool verifyFile(){ // Verifies the file existence 
@@ -481,16 +507,12 @@ void buildFile(){ // Makes the magic happen
         default_alert(1,5);
         fclose(fpTest);
         return;
-    }else{
-        fpTest = fopen("Test.txt", "w");
     }
 
     if(((fpResult = fopen("Result.txt", "r")) != NULL)){
         default_alert(1,5);
-        fclose(fpTest);
+        fclose(fpResult);
         return;
-    }else{
-        fpResult = fopen("Result.txt", "w");
     }
 
     int order[lnCount()];
@@ -504,7 +526,7 @@ void buildFile(){ // Makes the magic happen
         tableView(PRINT_ALL);
         printf("IDs (To finish, press Enter in a empty line):\n");
         step = -1;
-        while(sscanf(fgets(bigBuff, 8191, stdin),"%d\n",&order[++step]) != 0 && strcmp(bigBuff,"\n") != 0 && step < lnCount()){
+        while(step < lnCount() && sscanf(fgets(bigBuff, 8191, stdin),"%d\n",&order[++step]) != 0 && strcmp(bigBuff,"\n") != 0){
             if(order[step] < 1 || order[step] > lnCount()){
                 tableView(PRINT_ALL);
                 default_alert(1,4);
@@ -528,9 +550,48 @@ void buildFile(){ // Makes the magic happen
             }
         }
         break;
-    }    
-    fclose(fpTest);
+    }
+    int qtd = 0;
+    consoleClear();
+    if(step > 1 && flag)
+        while(qtd < 1 || qtd > step){  
+            printf("Number of diferent tests(MAX = %d): ", step*(step-1));
+            if(sscanf(fgets(smallBuff, 7, stdin), "%d", &qtd) == 0)
+                default_alert(1,0);
+        }
+    else
+        qtd = 1;
+    char itoa[3];
+    for(int i = 0; i < qtd; i++){
+        char testName[16] = "Test";
+        sprintf(itoa, "%d", i+1);
+        strcat(testName,itoa);
+        strcat(testName,".txt\0");
+        fpTest = fopen(testName, "w");
+        if(flag){
+            srand(time(NULL));
+            int nRand = 0;
+            for(int j = 0; j < step; j++){
+                nRand = rand()%(step - 1);
+                if(nRand == j){
+                    j--;
+                    continue;
+                }
+                // order[j] troca com order[nRand];
+                order[nRand] += order[j];
+                order[j] = order[nRand] - order[j];
+                order[nRand] -= order[j];
+            }
+        }
+        for (int k = 0; k < step; k++)
+            fprintId(fpTest,order[k],k+1,fPRINTTEST, 0);
+        fclose(fpTest);
+    }
+    fpResult = fopen("Result.txt", "w");
+    for (int l = 0; l < step; l++)
+        fprintId(fpResult, order[l], l+1, fPRINTSOLVED, 0);
     fclose(fpResult);
+    default_alert(0,0);
 }
 
 int main(){
@@ -547,6 +608,7 @@ int main(){
             default_alert(1,2);
     }while(flag == false);
     consoleClear();
+    ajustFile();
     printf("✔ File found\n");
     do{
         printf("\n1. Insert\n2. Edit\n3. Delete\n4. Visualize\n5. Filter tags\n6. Build test\n\n9. Exit\n>");
@@ -566,6 +628,7 @@ int main(){
             break;
         case 4:
             tableView(PRINT_ALL);
+            printf("%d", lnCount());
             break;
         case 5:
             qFilter();
